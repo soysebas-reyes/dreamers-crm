@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,13 @@ export default function LoginPage() {
     <div className="flex flex-1 items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
+          <Image
+            src="/helpbnk-logo.png"
+            alt="HelpBnk"
+            width={724}
+            height={172}
+            className="mb-2 h-7 w-auto"
+          />
           <CardTitle>Dreamers CRM</CardTitle>
           <CardDescription>
             Nobody who asked for help gets forgotten here.

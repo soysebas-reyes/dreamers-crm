@@ -47,7 +47,7 @@ export function ChannelPills({
         </Button>
       ))}
       <select
-        className="border-input bg-background h-8 rounded-md border px-2 text-sm"
+        className="border-input bg-background h-8 rounded-full border px-3 text-sm"
         value={PRIMARY_CHANNELS.includes(value) ? "" : value}
         onChange={(e) => onChange(e.target.value as Channel)}
       >
