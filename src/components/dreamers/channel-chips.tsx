@@ -19,6 +19,7 @@ export function ChannelChips({
         <Button
           variant="outline"
           size={size === "sm" ? "sm" : "default"}
+          nativeButton={false}
           render={
             <a
               href={waLink(whatsapp)}
@@ -35,6 +36,7 @@ export function ChannelChips({
         <Button
           variant="outline"
           size={size === "sm" ? "sm" : "default"}
+          nativeButton={false}
           render={
             <a
               href={mailtoLink(email)}

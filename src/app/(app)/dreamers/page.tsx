@@ -50,7 +50,9 @@ export default async function DreamersPage({
             Everyone the team is helping.
           </p>
         </div>
-        <Button render={<Link href="/dreamers/new" />}>+ New Dreamer</Button>
+        <Button nativeButton={false} render={<Link href="/dreamers/new" />}>
+          + New Dreamer
+        </Button>
       </div>
 
       <div className="flex gap-1 border-b">

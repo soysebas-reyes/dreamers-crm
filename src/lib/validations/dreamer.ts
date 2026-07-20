@@ -15,7 +15,10 @@ export const createDreamerSchema = z.object({
   communicationPreference: z.enum(Channel).nullish(),
   locationCity: z.string().nullish(),
   phone: z.string().nullish(),
-  email: z.email().nullish(),
+  // react-hook-form submits "" for an untouched optional field, not
+  // undefined — z.email() alone rejects "" as an invalid email, so an empty
+  // Email input would block submission even though the field is optional.
+  email: z.email().or(z.literal("")).nullish(),
   // A Dreamer is always created with their first Dream (PRD §6.3) — a
   // person-with-no-Dream isn't a state the foundation UI creates; helpers
   // add subsequent Dreams from the profile's "+ New Dream" action.

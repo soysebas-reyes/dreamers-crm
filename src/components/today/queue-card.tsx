@@ -74,6 +74,7 @@ export function QueueCard({ item }: { item: TodayQueueItem }) {
         <Button
           size="sm"
           variant="ghost"
+          nativeButton={false}
           render={<Link href={`/dreamers/${item.dreamerId}`} />}
         >
           Open

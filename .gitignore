@@ -52,6 +52,7 @@ $RECYCLE.BIN/
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea/
+.claude/
 
 
 /src/generated/prisma

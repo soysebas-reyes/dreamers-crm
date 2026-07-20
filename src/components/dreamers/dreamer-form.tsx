@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { isNextRedirectError } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,6 +50,7 @@ export function DreamerForm() {
       try {
         await createDreamer(values);
       } catch (error) {
+        if (isNextRedirectError(error)) throw error;
         toast.error(
           error instanceof Error
             ? error.message
