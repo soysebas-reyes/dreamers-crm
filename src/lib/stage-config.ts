@@ -1,4 +1,4 @@
-import { Stage } from "@/generated/prisma/client";
+import { Stage } from "@/generated/prisma/enums";
 
 export type StageConfigDefaults = {
   cadenceDays: number;

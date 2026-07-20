@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Stage } from "@/generated/prisma/client";
+import { Stage } from "@/generated/prisma/enums";
 
 export const createDreamSchema = z.object({
   dreamerId: z.uuid(),

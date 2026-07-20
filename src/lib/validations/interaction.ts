@@ -3,7 +3,7 @@ import {
   Channel,
   Direction,
   InteractionOutcome,
-} from "@/generated/prisma/client";
+} from "@/generated/prisma/enums";
 
 // The quick-log (PRD §7.5): exactly two required fields (summary + next
 // step), everything else defaulted or optional. Three modes cover the
@@ -12,7 +12,11 @@ import {
 
 const commonFields = {
   dreamerId: z.uuid(),
-  projectId: z.uuid().nullish(),
+  // Every Dreamer is created with a first Dream (see dreamer.ts) — the
+  // foundation UI always has one to log against. Person-level, project-less
+  // logging is schema-supported (Interaction.projectId is nullable) but not
+  // exposed in this build.
+  projectId: z.uuid(),
   completingTaskId: z.uuid().nullish(),
   summary: z.string().min(1, "Say what happened — even one line."),
   channel: z.enum(Channel).default(Channel.WHATSAPP),

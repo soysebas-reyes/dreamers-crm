@@ -3,7 +3,7 @@ import type {
   Direction,
   InteractionOutcome,
   Stage,
-} from "@/generated/prisma/client";
+} from "@/generated/prisma/enums";
 
 // Merged timeline (PRD §7.2): interactions, stage changes, and notes are
 // visually distinct (a note never masquerades as a logged contact) but
