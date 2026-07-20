@@ -1,0 +1,666 @@
+// Dreamers CRM — Prisma schema
+// Design source of truth: docs/PRD.md §6 (Data Model)
+//
+// Connection URLs are configured in prisma.config.ts (Prisma 7 convention),
+// not inline here. Runtime app code passes its own pooled connection string
+// when constructing PrismaClient — see src/lib/prisma.ts.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── ENUMS ─────────────────────────────
+
+enum Stage {
+  INTAKE
+  DISCOVERY
+  ACTIVE_HELP
+  LAUNCH_SUPPORT
+  MOMENTUM
+  GRADUATED // terminal, won (PRD §4.4)
+  CLOSED_REFERRED // terminal — better served elsewhere (referredTo note)
+  CLOSED_UNRESPONSIVE // terminal — never reachable, even at Intake
+}
+
+enum ProjectStatus {
+  ACTIVE
+  WAITING_ON_DREAMER
+  PAUSED
+  GHOSTED
+  RE_ENGAGED
+  DORMANT
+}
+
+enum DreamerSource {
+  HELPBNK_DM
+  DOORBELL
+  EVENT
+  SOCIAL_DM
+  REFERRAL
+  WALK_IN
+  OTHER
+}
+
+enum Channel {
+  WHATSAPP
+  EMAIL
+  VIDEO_CALL
+  PHONE_CALL
+  IN_PERSON
+  HELPBNK_DM
+  VOICE_NOTE
+  SOCIAL_DM
+  OTHER
+}
+
+enum Direction {
+  OUTBOUND
+  INBOUND
+  MUTUAL
+}
+
+enum InteractionOutcome {
+  PROGRESSED
+  NO_CHANGE
+  NEW_BLOCKER
+  NO_SHOW
+  DREAMER_WIN
+  CONCERN_FLAG
+}
+
+enum TaskStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+enum WaitingOn {
+  HELPER
+  DREAMER
+  THIRD_PARTY
+}
+
+enum ProjectOutcome {
+  ACHIEVED
+  PARTIALLY_ACHIEVED
+  DREAMER_PIVOTED
+  DREAMER_STEPPED_BACK
+  WE_COULDNT_HELP
+}
+
+enum SuccessOutcome {
+  FIRST_REVENUE
+  LAUNCHED
+  REGISTERED
+  FUNDED
+  FIRST_HIRE_OR_PARTNER
+  SKILL_UNLOCKED
+  PLAN_TO_ACTION
+  REDIRECTED_WELL
+  PAYS_IT_FORWARD
+}
+
+enum MilestoneType {
+  // business
+  FIRST_SALE
+  BUSINESS_REGISTERED
+  FIRST_HIRE
+  LAUNCH
+  FUNDING
+  // personal courage
+  FIRST_PUBLIC_PITCH
+  CAME_BACK_AFTER_SETBACK
+  CUSTOM // requires customLabel
+}
+
+enum ConsentScope {
+  PRIVATE
+  TEAM
+  PUBLIC
+}
+
+enum RememberCategory {
+  FAMILY
+  DATES
+  FEARS // hard rule: excluded from ALL exports & story drafts (app-enforced, PRD §6.8)
+  JOYS
+  PREFERENCES
+  CONTEXT
+}
+
+enum HelperRole {
+  HELPER
+  LEAD
+}
+
+enum HelperStatus {
+  ACTIVE
+  AWAY
+  LEFT
+}
+
+enum TagKind {
+  THEME
+  PROGRAM
+  FLAG
+}
+
+enum NoteVisibility {
+  TEAM
+  OWNER_AND_LEAD
+}
+
+enum HandoffStatus {
+  PENDING_BRIEF
+  BRIEF_COMPLETED
+  INTRO_SENT
+  COMPLETED
+  CANCELLED
+}
+
+enum AuditAction {
+  REASSIGNMENT
+  BREAK_GLASS_ACCESS
+  EXPORT
+  GDPR_ERASURE
+  CONFIG_CHANGE
+  OTHER
+}
+
+// ─────────────────────── AUTH.JS v5 + HELPER ───────────────────────
+// One User model doubles as both the Auth.js adapter user AND the PRD's
+// "helper" — avoids a brittle 1:1 join. @auth/prisma-adapter only requires
+// the model be named `User` with its expected fields; extra fields are fine.
+
+model User {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  name          String?
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+
+  role        HelperRole   @default(HELPER)
+  status      HelperStatus @default(ACTIVE)
+  specialties String[]     @default([])
+  timezone    String?
+  teamId      String?      @map("team_id") @db.Uuid
+  team        Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  accounts           Account[]
+  sessions           Session[]
+  ownedDreamers      Dreamer[]         @relation("DreamerOwner")
+  ownedProjects      Project[]         @relation("ProjectOwner")
+  interactions       Interaction[]     @relation("InteractionHelper")
+  editedInteractions Interaction[]     @relation("InteractionEditor")
+  tasks              Task[]            @relation("TaskAssignee")
+  notes              Note[]            @relation("NoteAuthor")
+  rememberItems      RememberItem[]    @relation("RememberAuthor")
+  stageTransitions   StageTransition[] @relation("TransitionActor")
+  handoffsFrom       Handoff[]         @relation("HandoffFrom")
+  handoffsTo         Handoff[]         @relation("HandoffTo")
+  auditEvents        AuditLog[]        @relation("AuditActor")
+
+  @@map("helper")
+}
+
+model Account {
+  userId            String  @map("user_id") @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@map("auth_account")
+}
+
+model Session {
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id") @db.Uuid
+  expires      DateTime
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_session")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("auth_verification_token")
+}
+
+// ─────────────────────────── TEAM LAYER ───────────────────────────
+
+model Team {
+  id   String @id @default(uuid(7)) @db.Uuid
+  name String
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  members      User[]
+  dreamers     Dreamer[]
+  tags         Tag[]
+  stageConfigs StageConfig[]
+
+  @@map("team")
+}
+
+// Cadence/duration values from PRD §4.1 — team-configurable, never hardcoded.
+model StageConfig {
+  id              String @id @default(uuid(7)) @db.Uuid
+  teamId          String @map("team_id") @db.Uuid
+  stage           Stage
+  cadenceDays     Int    @map("cadence_days")
+  targetStageDays Int?   @map("target_stage_days")
+  firstTouchHours Int?   @map("first_touch_hours") // INTAKE only: 48
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, stage])
+  @@map("stage_config")
+}
+
+// ──────────────────────────── DREAMER ────────────────────────────
+
+model Dreamer {
+  id     String @id @default(uuid(7)) @db.Uuid
+  teamId String @map("team_id") @db.Uuid
+
+  firstName     String  @map("first_name")
+  lastName      String? @map("last_name")
+  preferredName String? @map("preferred_name")
+
+  locationCity    String? @map("location_city")
+  locationCountry String? @map("location_country") @db.Char(2)
+  timezone        String?
+
+  source         DreamerSource @default(OTHER)
+  dreamStatement String?       @map("dream_statement")
+  originalAsk    String?       @map("original_ask") // "The Ask" — verbatim, never buried (PRD §7.2)
+  bioContext     String?       @map("bio_context")
+
+  communicationPreference Channel? @map("communication_preference")
+
+  // consent & safeguarding (PRD §11)
+  consentContact      Boolean   @default(true) @map("consent_contact")
+  consentStorySharing Boolean   @default(false) @map("consent_story_sharing")
+  sensitivityFlag      Boolean   @default(false) @map("sensitivity_flag")
+  doNotContactUntil    DateTime? @map("do_not_contact_until") @db.Date
+  dateOfBirth          DateTime? @map("date_of_birth") @db.Date
+  guardianConsentAt    DateTime? @map("guardian_consent_at")
+
+  // NOTE: lifecycle_rollup is DERIVED (rolled up from projects' statuses at
+  // query time) — never stored (PRD §6.2).
+
+  ownerId String @map("owner_id") @db.Uuid
+  owner   User   @relation("DreamerOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  team    Team   @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  projects          Project[]
+  interactions      Interaction[]
+  tasks             Task[]
+  notes             Note[]
+  rememberItems     RememberItem[]
+  channelIdentities ChannelIdentity[]
+  dreamerTags       DreamerTag[]
+  handoffs          Handoff[]
+
+  @@index([ownerId])
+  @@index([teamId])
+  @@map("dreamer")
+}
+
+model ChannelIdentity {
+  id        String  @id @default(uuid(7)) @db.Uuid
+  dreamerId String  @map("dreamer_id") @db.Uuid
+  channel   Channel
+  handle    String // E.164 phone, email, IG handle…
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  dreamer Dreamer @relation(fields: [dreamerId], references: [id], onDelete: Cascade)
+
+  @@unique([dreamerId, channel, handle])
+  @@index([channel, handle]) // duplicate warn-on-create lookup
+  @@map("channel_identity")
+}
+
+// ──────────────────────── PROJECT (Dream) ────────────────────────
+
+model Project {
+  id        String @id @default(uuid(7)) @db.Uuid
+  dreamerId String @map("dreamer_id") @db.Uuid
+
+  title       String
+  description String?
+
+  stage          Stage         @default(INTAKE)
+  status         ProjectStatus @default(ACTIVE)
+  stageEnteredAt DateTime      @default(now()) @map("stage_entered_at")
+
+  ownerId String @map("owner_id") @db.Uuid // usually = dreamer.ownerId; can differ
+
+  northStar           String?   @map("north_star")
+  northStarTargetDate DateTime? @map("north_star_target_date") @db.Date
+  planSteps           Json?     @map("plan_steps") // [{label, done}] 3-7 items; % derived
+
+  // status context (PRD §4.2)
+  waitingFor  String?   @map("waiting_for") // required by app when WAITING_ON_DREAMER
+  pauseReason String?   @map("pause_reason") // required by app when PAUSED
+  resumeDate  DateTime? @map("resume_date") @db.Date // app-validated <= 90 days out
+
+  // close & graduation (PRD §4.4) — schema complete now, UI arrives later
+  outcome             ProjectOutcome?
+  outcomeNote         String?          @map("outcome_note")
+  referredTo          String?          @map("referred_to") // CLOSED_REFERRED
+  successOutcomes     SuccessOutcome[] @default([]) @map("success_outcomes")
+  outcomeEvidence     Json?            @map("outcome_evidence") // {outcome: evidenceText}
+  graduationStory     String?          @map("graduation_story")
+  dreamerQuote        String?          @map("dreamer_quote")
+  dreamerQuoteConsent Boolean          @default(false) @map("dreamer_quote_consent")
+  helperReflection    String?          @map("helper_reflection")
+  alumniOptIn         Boolean          @default(false) @map("alumni_opt_in")
+  closedAt            DateTime?        @map("closed_at")
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  dreamer Dreamer @relation(fields: [dreamerId], references: [id], onDelete: Cascade)
+  owner   User    @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+
+  interactions     Interaction[]
+  tasks            Task[]
+  notes            Note[]
+  milestones       Milestone[]
+  stageTransitions StageTransition[]
+
+  @@index([dreamerId])
+  @@index([ownerId, status])
+  @@index([stage, status])
+  @@map("project")
+}
+
+// ─────────────────── INTERACTION (Touchpoint) ───────────────────
+// Highest-volume table; optimized for the <=15s quick-log (PRD §7.5).
+
+model Interaction {
+  id        String  @id @default(uuid(7)) @db.Uuid
+  dreamerId String  @map("dreamer_id") @db.Uuid
+  projectId String? @map("project_id") @db.Uuid // person-level check-ins are project-less
+  helperId  String  @map("helper_id") @db.Uuid
+
+  channel         Channel
+  direction       Direction           @default(OUTBOUND)
+  occurredAt      DateTime            @default(now()) @map("occurred_at") // editable for backfill
+  summary         String // THE one required field
+  outcome         InteractionOutcome?
+  countsAsContact Boolean             @default(true) @map("counts_as_contact")
+  commitments     Json? // [{who, what, byWhen}] — one-tap converts to task
+
+  // edit history instead of a 24h lock (PRD §6.4)
+  editedById String?   @map("edited_by_id") @db.Uuid
+  editedAt   DateTime? @map("edited_at")
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  dreamer  Dreamer  @relation(fields: [dreamerId], references: [id], onDelete: Cascade)
+  project  Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  helper   User     @relation("InteractionHelper", fields: [helperId], references: [id], onDelete: Restrict)
+  editedBy User?    @relation("InteractionEditor", fields: [editedById], references: [id], onDelete: SetNull)
+
+  spawnedTasks  Task[]         @relation("TaskSource")
+  rememberItems RememberItem[] @relation("RememberSource")
+
+  @@index([dreamerId, occurredAt(sort: Desc)]) // timeline + last-contact lookups
+  @@index([projectId, occurredAt(sort: Desc)])
+  @@index([helperId, occurredAt(sort: Desc)])
+  @@map("interaction")
+}
+
+// ─────────────────────── TASK (Next Step) ───────────────────────
+
+model Task {
+  id        String  @id @default(uuid(7)) @db.Uuid
+  dreamerId String  @map("dreamer_id") @db.Uuid
+  projectId String? @map("project_id") @db.Uuid
+
+  assigneeId   String     @map("assignee_id") @db.Uuid
+  title        String
+  dueAt        DateTime   @map("due_at")
+  isNextAction Boolean    @default(false) @map("is_next_action") // partial unique index — see migration
+  waitingOn    WaitingOn  @default(HELPER) @map("waiting_on")
+  status       TaskStatus @default(OPEN)
+  snoozeCount  Int        @default(0) @map("snooze_count") // 3+ -> amber flag (PRD §15 tripwire)
+
+  sourceInteractionId String?   @map("source_interaction_id") @db.Uuid
+  recreatedFromId     String?   @map("recreated_from_id") @db.Uuid // task lineage (PRD §12.1)
+  completedAt         DateTime? @map("completed_at")
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  dreamer           Dreamer      @relation(fields: [dreamerId], references: [id], onDelete: Cascade)
+  project           Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee          User         @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  sourceInteraction Interaction? @relation("TaskSource", fields: [sourceInteractionId], references: [id], onDelete: SetNull)
+  recreatedFrom     Task?        @relation("TaskLineage", fields: [recreatedFromId], references: [id], onDelete: SetNull)
+  recreations       Task[]       @relation("TaskLineage")
+
+  @@index([assigneeId, status, dueAt]) // Today queue: overdue / due-today
+  @@index([projectId, status])
+  @@index([dreamerId])
+  @@map("task")
+}
+
+// ──────────────────────────── NOTE ────────────────────────────
+
+model Note {
+  id        String  @id @default(uuid(7)) @db.Uuid
+  dreamerId String? @map("dreamer_id") @db.Uuid
+  projectId String? @map("project_id") @db.Uuid // CHECK constraint: at least one parent (migration)
+  authorId  String  @map("author_id") @db.Uuid
+
+  body       String // markdown
+  isPinned   Boolean        @default(false) @map("is_pinned")
+  visibility NoteVisibility @default(TEAM)
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  dreamer Dreamer? @relation(fields: [dreamerId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User     @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([dreamerId])
+  @@index([projectId])
+  @@map("note")
+}
+
+// ────────────────────────── MILESTONE ──────────────────────────
+
+model Milestone {
+  id        String @id @default(uuid(7)) @db.Uuid
+  projectId String @map("project_id") @db.Uuid
+
+  type           MilestoneType
+  customLabel    String?      @map("custom_label") // required by app when type=CUSTOM
+  occurredAt     DateTime     @map("occurred_at")
+  evidenceUrl    String?      @map("evidence_url")
+  storyNote      String?      @map("story_note")
+  consentToShare ConsentScope @default(TEAM) @map("consent_to_share")
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, occurredAt(sort: Desc)]) // Wins feed
+  @@map("milestone")
+}
+
+// ─────────────────── REMEMBER THIS (PRD §6.8, §9.2) ───────────────────
+
+model RememberItem {
+  id        String @id @default(uuid(7)) @db.Uuid
+  dreamerId String @map("dreamer_id") @db.Uuid
+
+  category    RememberCategory
+  factText    String           @map("fact_text")
+  resurfaceOn DateTime?        @map("resurface_on") @db.Date // birthday, launch day...
+
+  sourceInteractionId String? @map("source_interaction_id") @db.Uuid
+  createdById         String? @map("created_by_id") @db.Uuid
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  dreamer           Dreamer      @relation(fields: [dreamerId], references: [id], onDelete: Cascade)
+  sourceInteraction Interaction? @relation("RememberSource", fields: [sourceInteractionId], references: [id], onDelete: SetNull)
+  createdBy         User?        @relation("RememberAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([dreamerId])
+  @@index([resurfaceOn])
+  @@map("remember_item")
+}
+
+// ──────────────────────────── TAGS ────────────────────────────
+
+model Tag {
+  id     String  @id @default(uuid(7)) @db.Uuid
+  teamId String  @map("team_id") @db.Uuid
+  name   String
+  kind   TagKind @default(THEME)
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  team        Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  dreamerTags DreamerTag[]
+
+  @@unique([teamId, name])
+  @@map("tag")
+}
+
+model DreamerTag {
+  dreamerId String   @map("dreamer_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  dreamer Dreamer @relation(fields: [dreamerId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([dreamerId, tagId])
+  @@map("dreamer_tag")
+}
+
+// ──────────── STAGE TRANSITION (immutable log, PRD §6.9) ────────────
+
+model StageTransition {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  projectId   String   @map("project_id") @db.Uuid
+  fromStage   Stage?   @map("from_stage") // null on Dream creation
+  toStage     Stage    @map("to_stage")
+  changedById String   @map("changed_by_id") @db.Uuid
+  reason      String? // app-required on regressions (PRD §4.2)
+  occurredAt  DateTime @default(now()) @map("occurred_at")
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  changedBy User    @relation("TransitionActor", fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([projectId, occurredAt])
+  @@map("stage_transition")
+}
+
+// ──────────────────────── HANDOFF (PRD §8.3) ────────────────────────
+
+model Handoff {
+  id           String        @id @default(uuid(7)) @db.Uuid
+  dreamerId    String        @map("dreamer_id") @db.Uuid
+  fromHelperId String        @map("from_helper_id") @db.Uuid
+  toHelperId   String        @map("to_helper_id") @db.Uuid
+  status       HandoffStatus @default(PENDING_BRIEF)
+
+  brief              Json? // structured template sections (v1: template-based, not AI)
+  briefCompletedAt   DateTime? @map("brief_completed_at")
+  introSentAt        DateTime? @map("intro_sent_at")
+  firstTouchDueAt    DateTime? @map("first_touch_due_at") // +5 days SLA
+  firstTouchLoggedAt DateTime? @map("first_touch_logged_at") // until set -> HANDOFF_RISK
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  dreamer    Dreamer @relation(fields: [dreamerId], references: [id], onDelete: Cascade)
+  fromHelper User    @relation("HandoffFrom", fields: [fromHelperId], references: [id], onDelete: Restrict)
+  toHelper   User    @relation("HandoffTo", fields: [toHelperId], references: [id], onDelete: Restrict)
+
+  @@index([dreamerId])
+  @@index([toHelperId, status])
+  @@map("handoff")
+}
+
+// ─────────────── AUDIT LOG (append-only, PRD §6.9/§11) ───────────────
+
+model AuditLog {
+  id         String      @id @default(uuid(7)) @db.Uuid
+  actorId    String?     @map("actor_id") @db.Uuid
+  action     AuditAction
+  entityType String?     @map("entity_type") // "dreamer", "note", ...
+  entityId   String?     @map("entity_id") @db.Uuid
+  reason     String? // break-glass justification
+  metadata   Json?
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@map("audit_log")
+}
