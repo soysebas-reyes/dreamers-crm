@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dreamers CRM
 
-## Getting Started
+> A HubSpot-style CRM for tracking people you're helping — not people you're selling to.
+> Built for [HelpBnk](https://helpbnk.com). Every active Dream has exactly one Next Step.
+> Nobody who asked for help gets forgotten here.
 
-First, run the development server:
+## What it does
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Today queue** — the daily "who do I contact" list: overdue, due today, going quiet.
+- **≤15-second quick-log** — log a touchpoint with two required fields; everything else is defaulted.
+- **A 6-stage journey** — Intake → Discovery → Active Help → Launch Support → Momentum → Graduated, with cadence tracking per stage.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The full method and data model are in [docs/PRD.md](docs/PRD.md) — read it before contributing; it's the design source of truth for this repo.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Quickstart (local dev, ~10 minutes)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Prereqs: Node 20.9+ (24 recommended), npm. No Docker needed — the database is a free hosted Supabase project.
 
-## Learn More
+1. **Clone and install**
 
-To learn more about Next.js, take a look at the following resources:
+   ```bash
+   git clone https://github.com/soysebas-reyes/dreamers-crm.git
+   cd dreamers-crm
+   npm install
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Create a free Supabase project** at [supabase.com](https://supabase.com) (any region works; EU/UK is closer to the data-residency guidance in docs/PRD.md §11.1). From the dashboard: **Connect → ORMs → Prisma** gives you both connection strings you need next.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. **Configure your environment**
 
-## Deploy on Vercel
+   Copy `.env.example` to `.env` using your editor (or `cp .env.example .env` / `Copy-Item .env.example .env` — avoid PowerShell's `>` redirect, it can write a BOM that breaks env parsing). Paste in the two Supabase connection strings.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   Generate an auth secret:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```bash
+   npx auth secret
+   ```
+
+   This writes `AUTH_SECRET` to `.env.local` — copy that value into your `.env` too (Next.js reads both files, but Prisma's CLI only reads `.env`).
+
+4. **Create the schema and demo data**
+
+   ```bash
+   npm run db:deploy   # applies committed migrations — no shadow DB needed
+   npm run db:seed     # 1 team, 2 helpers, 8 Dreamers spanning Intake -> Graduated
+   ```
+
+5. **Run it**
+
+   ```bash
+   npm run dev
+   ```
+
+   Open http://localhost:3000. (Windows will prompt to allow Node through the firewall on first run — allow it.)
+
+6. **Log in**
+
+   Development mode ships a zero-config login: on `/login`, pick **"Continue as Sam (Lead)"** or **"Continue as Priya (Helper)"**. Magic-link email (Resend) is production-only.
+
+You should land on `/today` with a populated queue — the seed data is engineered so all three sections (overdue, due today, going quiet) have something in them on first run.
+
+### Windows-specific notes
+
+- **Don't clone inside OneDrive.** OneDrive's file sync locks files mid-write during `npm install` and `prisma generate`, causing `EPERM` errors. Clone somewhere like `C:\dev\dreamers-crm` instead.
+- If your Supabase password contains `@ : / %`, URL-encode it or regenerate an alphanumeric one — this is the most common setup snag.
+
+## Stack
+
+Next.js (App Router) · TypeScript · Prisma 7 (driver adapters, `@prisma/adapter-pg`) · Supabase Postgres · Auth.js v5 · Tailwind + shadcn/ui (Base UI) · Vitest.
+
+## Roadmap
+
+See the repo's [milestones](https://github.com/soysebas-reyes/dreamers-crm/milestones) and `docs/PRD.md` §13 for the full MVP → V1.1 → V2 plan. This repo currently implements the **foundation + core loop**: auth, Dreamer/Dream CRUD, the quick-log, the Today queue, and the Dreamer profile.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Look for issues labeled `good first issue`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

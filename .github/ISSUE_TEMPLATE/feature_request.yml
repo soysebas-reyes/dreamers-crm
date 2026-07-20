@@ -1,0 +1,20 @@
+name: Feature request
+description: Propose something new
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Who runs into this, and when?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+  - type: textarea
+    id: prd-check
+    attributes:
+      label: Does this align with docs/PRD.md?
+      description: Check it against §10 (Anti-Patterns) and §2 (Glossary) before proposing — see CONTRIBUTING.md.
