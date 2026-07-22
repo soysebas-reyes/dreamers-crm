@@ -11,11 +11,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { isDemoMode } from "@/lib/demo";
 import { devLogin, magicLinkSignIn } from "@/server/actions/auth";
 
 export default function LoginPage() {
   const hasResend = !!process.env.AUTH_RESEND_KEY;
   const isDev = process.env.NODE_ENV === "development";
+  const isDemo = isDemoMode();
+  const showCredentials = isDev || isDemo;
+  const hasAnyProvider = hasResend || showCredentials;
 
   return (
     <div className="flex flex-1 items-center justify-center p-6">
@@ -50,23 +54,37 @@ export default function LoginPage() {
               </Button>
             </form>
           )}
-          {hasResend && isDev && <Separator />}
-          {isDev && (
+          {hasResend && showCredentials && <Separator />}
+          {showCredentials && (
             <div className="flex flex-col gap-2">
               <p className="text-muted-foreground text-sm">
-                Development mode — sign in as a seeded demo helper:
+                {isDemo
+                  ? "This is a live demo — every person, dream, and conversation in it is fictional. Pick a profile to see how Dreamers CRM looks for a HelpBnk helper:"
+                  : "Development mode — sign in as a seeded demo helper:"}
               </p>
               <form action={devLogin.bind(null, "lead@dev.local")}>
                 <Button type="submit" variant="secondary" className="w-full">
-                  Continue as Sam (Lead)
+                  {isDemo
+                    ? "Explore the demo as Sam (Lead)"
+                    : "Continue as Sam (Lead)"}
                 </Button>
               </form>
               <form action={devLogin.bind(null, "helper@dev.local")}>
                 <Button type="submit" variant="secondary" className="w-full">
-                  Continue as Priya (Helper)
+                  {isDemo
+                    ? "Explore the demo as Priya (Helper)"
+                    : "Continue as Priya (Helper)"}
                 </Button>
               </form>
             </div>
+          )}
+          {!hasAnyProvider && (
+            <p className="text-muted-foreground text-sm">
+              No sign-in method is configured for this environment. Set{" "}
+              <code className="font-mono">AUTH_RESEND_KEY</code> in your
+              deployment&apos;s environment variables to enable magic-link
+              sign-in.
+            </p>
           )}
         </CardContent>
         <CardFooter>

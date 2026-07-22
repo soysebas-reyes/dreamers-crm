@@ -55,7 +55,7 @@ Prereqs: Node 20.9+ (24 recommended), npm. No Docker needed — the database is 
 
 6. **Log in**
 
-   Development mode ships a zero-config login: on `/login`, pick **"Continue as Sam (Lead)"** or **"Continue as Priya (Helper)"**. Magic-link email (Resend) is production-only.
+   Development mode ships a zero-config login: on `/login`, pick **"Continue as Sam (Lead)"** or **"Continue as Priya (Helper)"**. The same login is available on deployments with `DEMO_MODE=true` (see [Demo deployment](#demo-deployment)). Magic-link email (Resend) is production-only.
 
 You should land on `/today` with a populated queue — the seed data is engineered so all three sections (overdue, due today, going quiet) have something in them on first run.
 
@@ -63,6 +63,22 @@ You should land on `/today` with a populated queue — the seed data is engineer
 
 - **Don't clone inside OneDrive.** OneDrive's file sync locks files mid-write during `npm install` and `prisma generate`, causing `EPERM` errors. Clone somewhere like `C:\dev\dreamers-crm` instead.
 - If your Supabase password contains `@ : / %`, URL-encode it or regenerate an alphanumeric one — this is the most common setup snag.
+
+## Demo deployment
+
+To run a public demo (e.g. on Vercel) without configuring email login, set the environment
+variable `DEMO_MODE=true` and redeploy. This:
+
+- shows a site-wide banner stating that all data is fictional, and
+- enables the passwordless "Explore the demo as Sam / Priya" logins from the seed data in
+  production.
+
+Be aware of what that means: **anyone can log in and edit the demo data**. Only ever enable
+`DEMO_MODE` on a deployment seeded exclusively with fictional data (`npm run db:seed` — set
+`SEED_FORCE=1` when the environment is production), never where real personal data could exist
+(see [SECURITY.md](SECURITY.md)). Re-run the seed to reset the demo if visitors leave it in a
+mess, and note that `/login` is statically prerendered, so changing `DEMO_MODE` only takes
+effect on the next build/deploy.
 
 ## Stack
 

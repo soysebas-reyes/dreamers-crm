@@ -3,6 +3,7 @@ import { DM_Sans, Geist_Mono, Noto_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { DemoBanner } from "@/components/layout/demo-banner";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
       className={`${dmSans.variable} ${notoSansArabic.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        <DemoBanner />
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
       </body>

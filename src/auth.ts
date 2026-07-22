@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import Resend from "next-auth/providers/resend";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import authConfig from "@/auth.config";
+import { isDemoMode } from "@/lib/demo";
 import { prisma } from "@/lib/prisma";
 
 // @auth/prisma-adapter's types target the classic `@prisma/client` package
@@ -26,10 +27,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }),
         ]
       : []),
-    // Zero-config dev login — registered only in development, and only
-    // accepts the two @dev.local identities the seed script creates.
-    // Double-gated: the provider itself is absent in production builds.
-    ...(process.env.NODE_ENV === "development"
+    // Zero-config dev login — registered only in development, or on public
+    // demo deployments with DEMO_MODE=true. Only accepts the two @dev.local
+    // identities the seed script creates; outside those cases the provider
+    // itself is absent from the build.
+    ...(process.env.NODE_ENV === "development" || isDemoMode()
       ? [
           Credentials({
             id: "dev-login",
