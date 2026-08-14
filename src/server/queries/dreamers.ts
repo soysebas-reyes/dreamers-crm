@@ -94,24 +94,49 @@ export async function listDreamers(teamId: string): Promise<DreamerListRow[]> {
 }
 
 export async function getDreamerProfile(dreamerId: string) {
-  return prisma.dreamer.findUnique({
-    where: { id: dreamerId },
-    include: {
-      owner: { select: { id: true, name: true } },
-      channelIdentities: true,
-      dreamerTags: { include: { tag: true } },
-      dreamerTools: { include: { tool: true } },
-      rememberItems: { orderBy: { createdAt: "desc" } },
-      projects: {
-        where: { archivedAt: null },
-        orderBy: { createdAt: "desc" },
-        include: {
-          tasks: {
-            where: { isNextAction: true, status: "OPEN" },
-            take: 1,
+  try {
+    return await prisma.dreamer.findUnique({
+      where: { id: dreamerId },
+      include: {
+        owner: { select: { id: true, name: true } },
+        channelIdentities: true,
+        dreamerTags: { include: { tag: true } },
+        dreamerTools: { include: { tool: true } },
+        rememberItems: { orderBy: { createdAt: "desc" } },
+        projects: {
+          where: { archivedAt: null },
+          orderBy: { createdAt: "desc" },
+          include: {
+            tasks: {
+              where: { isNextAction: true, status: "OPEN" },
+              take: 1,
+            },
           },
         },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error("Error fetching dreamer profile with tools:", error);
+    const dreamer = await prisma.dreamer.findUnique({
+      where: { id: dreamerId },
+      include: {
+        owner: { select: { id: true, name: true } },
+        channelIdentities: true,
+        dreamerTags: { include: { tag: true } },
+        rememberItems: { orderBy: { createdAt: "desc" } },
+        projects: {
+          where: { archivedAt: null },
+          orderBy: { createdAt: "desc" },
+          include: {
+            tasks: {
+              where: { isNextAction: { equals: true }, status: "OPEN" },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+    if (!dreamer) return null;
+    return { ...dreamer, dreamerTools: [] };
+  }
 }
