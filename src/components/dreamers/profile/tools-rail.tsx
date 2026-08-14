@@ -10,7 +10,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,12 +70,15 @@ export function ToolsRail({ dreamerId, dreamerTools, availableTools }: ToolsRail
       <div className="flex items-center justify-between">
         <h3 className="font-semibold tracking-tight">Affiliate Tools</h3>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 px-2">
-              <Plus className="mr-2 h-4 w-4" />
-              Suggest Tool
-            </Button>
-          </DialogTrigger>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2"
+            onClick={() => setOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Suggest Tool
+          </Button>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Suggest Affiliate Tool</DialogTitle>
