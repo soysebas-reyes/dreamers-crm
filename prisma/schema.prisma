@@ -172,6 +172,11 @@ enum AuditAction {
   OTHER
 }
 
+enum ToolStatus {
+  SUGGESTED
+  USED
+}
+
 // ─────────────────────── AUTH.JS v5 + HELPER ───────────────────────
 // One User model doubles as both the Auth.js adapter user AND the PRD's
 // "helper" — avoids a brittle 1:1 join. @auth/prisma-adapter only requires
@@ -340,6 +345,7 @@ model Dreamer {
   channelIdentities ChannelIdentity[]
   dreamerTags       DreamerTag[]
   handoffs          Handoff[]
+  dreamerTools      DreamerTool[]
 
   @@index([ownerId])
   @@index([teamId])
@@ -663,4 +669,41 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId, createdAt])
   @@map("audit_log")
+}
+
+// ─────────────────────── AFFILIATE TOOLS ───────────────────────
+
+model AffiliateTool {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  name        String   @unique
+  url         String?
+  category    String?
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  dreamerTools DreamerTool[]
+
+  @@map("affiliate_tool")
+}
+
+model DreamerTool {
+  id        String     @id @default(uuid(7)) @db.Uuid
+  dreamerId String     @map("dreamer_id") @db.Uuid
+  toolId    String     @map("tool_id") @db.Uuid
+  status    ToolStatus @default(SUGGESTED)
+  notes     String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  dreamer Dreamer       @relation(fields: [dreamerId], references: [id], onDelete: Cascade)
+  tool    AffiliateTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@unique([dreamerId, toolId])
+  @@index([dreamerId])
+  @@index([toolId])
+  @@map("dreamer_tool")
 }

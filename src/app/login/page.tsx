@@ -59,16 +59,9 @@ export default function LoginPage() {
             <div className="flex flex-col gap-2">
               <p className="text-muted-foreground text-sm">
                 {isDemo
-                  ? "This is a live demo — every person, dream, and conversation in it is fictional. Pick a profile to see how Dreamers CRM looks for a HelpBnk helper:"
+                  ? "This is a live demo — every person, dream, and conversation in it is fictional."
                   : "Development mode — sign in as a seeded demo helper:"}
               </p>
-              <form action={devLogin.bind(null, "lead@dev.local")}>
-                <Button type="submit" variant="secondary" className="w-full">
-                  {isDemo
-                    ? "Explore the demo as Sam (Lead)"
-                    : "Continue as Sam (Lead)"}
-                </Button>
-              </form>
               <form action={devLogin.bind(null, "helper@dev.local")}>
                 <Button type="submit" variant="secondary" className="w-full">
                   {isDemo

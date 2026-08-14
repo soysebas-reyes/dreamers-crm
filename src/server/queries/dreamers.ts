@@ -100,6 +100,7 @@ export async function getDreamerProfile(dreamerId: string) {
       owner: { select: { id: true, name: true } },
       channelIdentities: true,
       dreamerTags: { include: { tag: true } },
+      dreamerTools: { include: { tool: true } },
       rememberItems: { orderBy: { createdAt: "desc" } },
       projects: {
         where: { archivedAt: null },

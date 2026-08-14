@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getDreamerProfile } from "@/server/queries/dreamers";
 import { getDreamerTimeline } from "@/server/queries/timeline";
+import { getActiveTools } from "@/server/queries/tools";
 import { DEFAULT_STAGE_CONFIG } from "@/lib/stage-config";
 import { IdentityRail } from "@/components/dreamers/profile/identity-rail";
+import { ToolsRail } from "@/components/dreamers/profile/tools-rail";
 import { DreamCard } from "@/components/dreamers/profile/dream-card";
 import { TheAsk } from "@/components/dreamers/profile/the-ask";
 import { Timeline } from "@/components/dreamers/profile/timeline";
@@ -22,9 +24,10 @@ export default async function DreamerProfilePage({
   const dreamer = await getDreamerProfile(id);
   if (!dreamer) notFound();
 
-  const [timeline, stageConfigs] = await Promise.all([
+  const [timeline, stageConfigs, availableTools] = await Promise.all([
     getDreamerTimeline(id),
     prisma.stageConfig.findMany({ where: { teamId: dreamer.teamId } }),
+    getActiveTools(),
   ]);
   const cadenceByStage = new Map(
     stageConfigs.map((sc) => [sc.stage, sc.cadenceDays]),
@@ -81,6 +84,11 @@ export default async function DreamerProfilePage({
         ))}
         <DreamFormDialog dreamerId={dreamer.id} />
         <TheAsk originalAsk={dreamer.originalAsk} />
+        <ToolsRail
+          dreamerId={dreamer.id}
+          dreamerTools={dreamer.dreamerTools}
+          availableTools={availableTools}
+        />
       </aside>
     </div>
   );
