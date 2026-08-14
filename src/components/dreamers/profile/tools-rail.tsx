@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ToolStatus, type AffiliateTool, type DreamerTool } from "@/generated/prisma/client";
+import { type AffiliateTool, type DreamerTool } from "@/generated/prisma/client";
 import { suggestTool, markToolUsed, addCustomTool } from "@/server/actions/tools";
 
 type ToolWithStatus = DreamerTool & { tool: AffiliateTool };
@@ -34,8 +34,8 @@ export function ToolsRail({ dreamerId, dreamerTools, availableTools }: ToolsRail
   const [customName, setCustomName] = useState("");
   const [customUrl, setCustomUrl] = useState("");
 
-  const suggestedTools = dreamerTools.filter((t) => t.status === ToolStatus.SUGGESTED);
-  const usedTools = dreamerTools.filter((t) => t.status === ToolStatus.USED);
+  const suggestedTools = dreamerTools.filter((t) => t.status === "SUGGESTED");
+  const usedTools = dreamerTools.filter((t) => t.status === "USED");
 
   const unassignedTools = availableTools.filter(
     (at) => !dreamerTools.some((dt) => dt.toolId === at.id)
